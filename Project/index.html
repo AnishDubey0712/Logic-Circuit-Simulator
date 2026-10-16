@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LogicFlow — Interactive Digital Logic Circuit Simulator</title>
+  <meta name="description" content="A state-of-the-art interactive digital logic circuit simulator with real-time signal propagation, automated truth table generator, feedback loop detection, and universal gate circuits. Built for Swayambhu 2K26.">
+  
+  <!-- Modern Typography: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons (CDN) -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Canvas Confetti for Celebration on Valid Truth Table / Solved Circuit -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <link rel="stylesheet" href="style.css?v=5.0">
+</head>
+<body>
+  <!-- Main App Container -->
+  <div class="app-layout">
+    
+    <!-- Top Navigation Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo-icon">
+          <i data-lucide="cpu" class="icon-md"></i>
+        </div>
+        <div class="brand-text">
+          <h1>
+            LogicFlow <span class="badge-pro">PRO</span>
+            <span class="badge-dpdp" title="Compliant with Digital Personal Data Protection Act, 2023: Zero network data collection, 100% in-browser client-side simulation.">
+              <i data-lucide="shield-check" class="icon-xs"></i> DPDP 2023 Compliant
+            </span>
+          </h1>
+          <span class="subtext">Digital Circuit Simulator & Lab</span>
+        </div>
+      </div>
+
+      <!-- Center Controls: Presets & Truth Table -->
+      <div class="header-center">
+        <div class="preset-group">
+          <label for="presetSelect"><i data-lucide="folder-open" class="icon-xs"></i> Examples:</label>
+          <select id="presetSelect" class="select-dropdown">
+            <option value="half-adder">⭐ Half Adder (Must-Have)</option>
+            <option value="full-adder">🚀 Full Adder (3-Input, 2-Output)</option>
+            <option value="xor-nand">⚡ XOR from 4 NANDs (Universal Gate)</option>
+            <option value="sr-latch">💾 SR Latch Memory Cell</option>
+            <option value="ring-oscillator">⚠️ Feedback Loop Ring Oscillator</option>
+            <option value="empty">📄 Blank Canvas</option>
+          </select>
+          <button id="loadPresetBtn" class="btn btn-secondary" title="Load selected example circuit">
+            <i data-lucide="play-circle" class="icon-sm"></i> Load
+          </button>
+        </div>
+
+        <div class="divider-v"></div>
+
+        <button id="truthTableBtn" class="btn btn-primary glow-btn" title="Generate Truth Table for all inputs & outputs">
+          <i data-lucide="table" class="icon-sm"></i>
+          <span>Truth Table</span>
+        </button>
+
+        <button id="toggleChatBtn" class="btn btn-ai glow-ai-btn" title="Open AI Circuit Assistant Chat">
+          <i data-lucide="message-square-plus" class="icon-sm"></i>
+          <span>AI Assistant</span>
+        </button>
+      </div>
+
+      <!-- Right Header Actions -->
+      <div class="header-right">
+        <div class="tool-btn-group">
+          <button id="undoBtn" class="btn-icon" title="Undo (Ctrl+Z)" disabled>
+            <i data-lucide="undo" class="icon-sm"></i>
+          </button>
+          <button id="redoBtn" class="btn-icon" title="Redo (Ctrl+Y)" disabled>
+            <i data-lucide="redo" class="icon-sm"></i>
+          </button>
+          <button id="clearBtn" class="btn-icon btn-danger-hover" title="Clear Canvas">
+            <i data-lucide="trash-2" class="icon-sm"></i>
+          </button>
+        </div>
+
+        <div class="divider-v"></div>
+
+        <div class="tool-btn-group">
+          <button id="exportJsonBtn" class="btn-icon" title="Export Circuit JSON">
+            <i data-lucide="download" class="icon-sm"></i>
+          </button>
+          <button id="importJsonBtn" class="btn-icon" title="Import Circuit JSON">
+            <i data-lucide="upload" class="icon-sm"></i>
+          </button>
+          <button id="exportImageBtn" class="btn-icon" title="Export Circuit as Image PNG">
+            <i data-lucide="camera" class="icon-sm"></i>
+          </button>
+          <button id="helpBtn" class="btn-icon" title="Quick Help & Keyboard Shortcuts">
+            <i data-lucide="help-circle" class="icon-sm"></i>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Workspace Body: Sidebar + Canvas Area -->
+    <div class="app-body">
+      
+      <!-- Left Component Palette -->
+      <aside class="sidebar-palette">
+        <div class="sidebar-header">
+          <span class="sidebar-title">COMPONENTS</span>
+          <span class="sidebar-hint">Click or drag onto canvas</span>
+        </div>
+
+        <!-- Prominent AI Copilot Feature Card in Sidebar -->
+        <div class="sidebar-ai-box">
+          <div class="ai-box-badge"><i data-lucide="sparkles" class="icon-xs"></i> GENERATIVE AI</div>
+          <h4>AI Assistant Chat</h4>
+          <p>Text-to-circuit generation</p>
+          <button id="aiSidebarBtn" class="btn btn-ai btn-sm w-full">
+            <i data-lucide="message-square" class="icon-xs"></i> Open AI Chat
+          </button>
+        </div>
+
+        <div class="palette-scroll">
+          <!-- Inputs Section -->
+          <div class="palette-category">
+            <div class="category-header">
+              <i data-lucide="toggle-left" class="icon-xs"></i>
+              <span>Inputs & Sources</span>
+            </div>
+            <div class="palette-items">
+              <div class="palette-card" draggable="true" data-type="SWITCH" title="Interactive 0/1 Toggle Switch">
+                <div class="card-icon"><i data-lucide="toggle-right"></i></div>
+                <div class="card-info">
+                  <span class="card-name">Toggle Switch</span>
+                  <span class="card-desc">Clickable 0/1 Input</span>
+                </div>
+              </div>
+              <div class="palette-card" draggable="true" data-type="CLOCK" title="Periodic Clock Pulse Generator">
+                <div class="card-icon"><i data-lucide="activity"></i></div>
+                <div class="card-info">
+                  <span class="card-name">Clock Pulse</span>
+                  <span class="card-desc">1 Hz / 2 Hz Signal</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Outputs Section -->
+          <div class="palette-category">
+            <div class="category-header">
+              <i data-lucide="lightbulb" class="icon-xs"></i>
+              <span>Outputs & Probes</span>
+            </div>
+            <div class="palette-items">
+              <div class="palette-card" draggable="true" data-type="BULB" title="Output Light Bulb with hollow/filled states">
+                <div class="card-icon"><i data-lucide="lightbulb"></i></div>
+                <div class="card-info">
+                  <span class="card-name">Output Bulb</span>
+                  <span class="card-desc">High/Low Indicator</span>
+                </div>
+              </div>
+              <div class="palette-card" draggable="true" data-type="DISPLAY_7SEG" title="7-Segment Hex Display">
+                <div class="card-icon"><i data-lucide="hash"></i></div>
+                <div class="card-info">
+                  <span class="card-name">4-Bit Hex Display</span>
+                  <span class="card-desc">Numeric 0-F readout</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Basic Logic Gates -->
+          <div class="palette-category">
+            <div class="category-header">
+              <i data-lucide="binary" class="icon-xs"></i>
+              <span>Standard Gates</span>
+            </div>
+            <div class="palette-items">
+              <div class="palette-card" draggable="true" data-type="AND" title="AND Gate: 1 if all inputs are 1">
+                <div class="card-symbol and-sym">AND</div>
+                <div class="card-info">
+                  <span class="card-name">AND Gate</span>
+                  <span class="card-desc">Y = A · B</span>
+                </div>
+              </div>
+              <div class="palette-card" draggable="true" data-type="OR" title="OR Gate: 1 if any input is 1">
+                <div class="card-symbol or-sym">OR</div>
+                <div class="card-info">
+                  <span class="card-name">OR Gate</span>
+                  <span class="card-desc">Y = A + B</span>
+                </div>
+              </div>
+              <div class="palette-card" draggable="true" data-type="NOT" title="NOT Gate (Inverter): Inverts input">
+                <div class="card-symbol not-sym">NOT</div>
+                <div class="card-info">
+                  <span class="card-name">NOT (Inverter)</span>
+                  <span class="card-desc">Y = A'</span>
+                </div>
+              </div>
+              <div class="palette-card" draggable="true" data-type="XOR" title="XOR Gate: 1 if inputs differ">
+                <div class="card-symbol xor-sym">XOR</div>
+                <div class="card-info">
+                  <span class="card-name">XOR Gate</span>
+                  <span class="card-desc">Y = A ⊕ B</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Universal & Complementary Gates -->
+          <div class="palette-category">
+            <div class="category-header">
+              <i data-lucide="zap" class="icon-xs"></i>
+              <span>Universal & Other Gates</span>
+            </div>
+            <div class="palette-items">
+              <div class="palette-card" draggable="true" data-type="NAND" title="NAND Gate: Inverted AND (Universal)">
+                <div class="card-symbol nand-sym">NAND</div>
+                <div class="card-info">
+                  <span class="card-name">NAND Gate</span>
+                  <span class="card-desc">Y = (A · B)'</span>
+                </div>
+              </div>
+              <div class="palette-card" draggable="true" data-type="NOR" title="NOR Gate: Inverted OR (Universal)">
+                <div class="card-symbol nor-sym">NOR</div>
+                <div class="card-info">
+                  <span class="card-name">NOR Gate</span>
+                  <span class="card-desc">Y = (A + B)'</span>
+                </div>
+              </div>
+              <div class="palette-card" draggable="true" data-type="XNOR" title="XNOR Gate: Equivalence">
+                <div class="card-symbol xnor-sym">XNOR</div>
+                <div class="card-info">
+                  <span class="card-name">XNOR Gate</span>
+                  <span class="card-desc">Y = (A ⊕ B)'</span>
+                </div>
+              </div>
+              <div class="palette-card" draggable="true" data-type="BUFFER" title="Buffer: Signal repeater">
+                <div class="card-symbol buf-sym">BUF</div>
+                <div class="card-info">
+                  <span class="card-name">Buffer</span>
+                  <span class="card-desc">Y = A</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sidebar Footer Status -->
+        <div class="sidebar-status">
+          <div class="status-indicator">
+            <span class="status-dot"></span>
+            <span class="status-text" id="engineStatus">Engine: Ready</span>
+          </div>
+          <div class="feedback-badge hidden" id="feedbackLoopAlert" title="Circuit contains a circular feedback loop. Safe iteration cap applied.">
+            <i data-lucide="alert-triangle" class="icon-xs"></i>
+            <span>Loop Warning</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Center Interactive Canvas Viewport -->
+      <main class="canvas-viewport" id="canvasViewport">
+        <!-- Circuit Tabs Bar (Multi-Tab Workspaces) -->
+        <div class="circuit-tabs-bar" id="circuitTabsBar">
+          <div class="tabs-list" id="tabsList">
+            <!-- Tabs rendered dynamically -->
+          </div>
+          <button class="btn-new-tab" id="newTabBtn" title="Create New Blank Circuit Tab">
+            <i data-lucide="plus" class="icon-xs"></i>
+          </button>
+        </div>
+
+        <!-- Floating Canvas Toolbar -->
+        <div class="canvas-toolbar">
+          <div class="tool-group">
+            <button id="zoomInBtn" class="btn-canvas-tool" title="Zoom In">
+              <i data-lucide="zoom-in" class="icon-xs"></i>
+            </button>
+            <span id="zoomLevelDisplay" class="zoom-label">100%</span>
+            <button id="zoomOutBtn" class="btn-canvas-tool" title="Zoom Out">
+              <i data-lucide="zoom-out" class="icon-xs"></i>
+            </button>
+            <button id="zoomResetBtn" class="btn-canvas-tool" title="Reset View">
+              <i data-lucide="maximize" class="icon-xs"></i>
+            </button>
+          </div>
+
+          <div class="divider-v-subtle"></div>
+
+          <div class="tool-group">
+            <button id="snapGridBtn" class="btn-canvas-tool active" title="Toggle Snap to Grid">
+              <i data-lucide="grid" class="icon-xs"></i>
+              <span>Snap</span>
+            </button>
+            <button id="deleteSelectedBtn" class="btn-canvas-tool btn-danger-subtle" title="Delete Selected (Del key)">
+              <i data-lucide="trash" class="icon-xs"></i>
+              <span>Delete</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Notification Toast Bar -->
+        <div class="notification-container" id="notificationToast"></div>
+
+        <!-- HTML5 High-DPI Canvas -->
+        <canvas id="circuitCanvas"></canvas>
+
+        <!-- Help Guide Overlay Bar at Bottom -->
+        <footer class="canvas-footer-stats">
+          <div class="stat-item">
+            <span class="stat-label">Components:</span>
+            <span class="stat-val" id="statGateCount">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Wires:</span>
+            <span class="stat-val" id="statWireCount">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Inputs:</span>
+            <span class="stat-val" id="statInputCount">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Outputs:</span>
+            <span class="stat-val" id="statOutputCount">0</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-item hint-text">
+            <span>💡 Click switch to toggle 0/1 • Drag output pin to input pin • Del to remove</span>
+          </div>
+        </footer>
+      </main>
+
+      <!-- RIGHT CHAT DRAWER: ChatGPT-Style AI Circuit Assistant -->
+      <aside class="ai-chat-drawer" id="aiChatDrawer">
+        <!-- Chat Header -->
+        <div class="chat-header">
+          <div class="chat-agent-info">
+            <div class="agent-avatar">
+              <i data-lucide="sparkles" class="icon-sm"></i>
+            </div>
+            <div class="agent-text">
+              <span class="agent-name">Circuit Copilot</span>
+              <span class="agent-status"><span class="pulse-dot"></span> Online (Gemini 3.5 Flash)</span>
+            </div>
+          </div>
+          <button class="btn-close" id="closeChatBtn" title="Close Chat Drawer">
+            <i data-lucide="x" class="icon-sm"></i>
+          </button>
+        </div>
+
+        <!-- Messages Stream -->
+        <div class="chat-messages" id="chatMessages">
+          <div class="chat-msg bot-msg">
+            <div class="msg-avatar"><i data-lucide="bot" class="icon-xs"></i></div>
+            <div class="msg-bubble">
+              <p>Hello! I am your <strong>AI Circuit Designer</strong>.</p>
+              <p>Type any circuit in plain English and I will build and wire it directly onto your canvas!</p>
+              <div class="msg-suggestions">
+                <span>Quick prompts:</span>
+                <button class="chip-sm" data-prompt="Build a 4-to-1 Multiplexer">4-to-1 MUX</button>
+                <button class="chip-sm" data-prompt="Build a Majority Voter circuit with 3 inputs">Majority Voter</button>
+                <button class="chip-sm" data-prompt="Build a Full Subtractor with Difference and Borrow Out">Full Subtractor</button>
+                <button class="chip-sm" data-prompt="Build a 2-bit equality comparator">2-Bit Comparator</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chat Input Footer -->
+        <div class="chat-footer">
+          <form id="chatForm" class="chat-form">
+            <input 
+              type="text" 
+              id="chatInput" 
+              class="chat-input" 
+              placeholder="Ask AI to design a circuit..." 
+              autocomplete="off"
+            />
+            <button type="submit" id="chatSendBtn" class="chat-send-btn" title="Send Prompt">
+              <i data-lucide="send" class="icon-sm"></i>
+            </button>
+          </form>
+          <span class="chat-disclaimer">Privacy by Default: Direct client-side AI execution</span>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- MODAL: Truth Table Generator (Must-Have Requirement) -->
+  <div class="modal-overlay hidden" id="truthTableModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i data-lucide="table" class="icon-md text-cyan"></i>
+          <div>
+            <h3>Automated Truth Table Generator</h3>
+            <span class="modal-subtitle">Full truth table computed for all input switches & output bulbs</span>
+          </div>
+        </div>
+        <button class="btn-close" id="closeTruthTableBtn" title="Close">
+          <i data-lucide="x" class="icon-sm"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="tt-meta-bar">
+          <div class="tt-summary" id="ttSummary">
+            Evaluating inputs & outputs...
+          </div>
+          <div class="tt-actions">
+            <button id="copyTtCsvBtn" class="btn btn-secondary btn-sm" title="Copy as CSV table">
+              <i data-lucide="clipboard-copy" class="icon-xs"></i> Copy CSV
+            </button>
+            <button id="copyTtMdBtn" class="btn btn-secondary btn-sm" title="Copy as Markdown table">
+              <i data-lucide="file-text" class="icon-xs"></i> Copy Markdown
+            </button>
+          </div>
+        </div>
+
+        <div class="table-scroll-container">
+          <table class="truth-table" id="truthTableElement">
+            <thead id="ttHead"></thead>
+            <tbody id="ttBody"></tbody>
+          </table>
+        </div>
+
+        <div class="tt-footnote">
+          <span>* High (1) = Filled Glowing Bulb / Active Pin • Low (0) = Hollow Dimmed Bulb • Row with blue badge matches current circuit switch states.</span>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <span class="privacy-note"><i data-lucide="lock" class="icon-xs"></i> Generated 100% in-browser</span>
+        <button class="btn btn-primary" id="doneTruthTableBtn">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Import / Export JSON -->
+  <div class="modal-overlay hidden" id="jsonModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i data-lucide="code" class="icon-md text-cyan"></i>
+          <div>
+            <h3 id="jsonModalTitle">Circuit JSON Configuration</h3>
+            <span class="modal-subtitle">Save or load circuit definitions</span>
+          </div>
+        </div>
+        <button class="btn-close" id="closeJsonModalBtn">
+          <i data-lucide="x" class="icon-sm"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <textarea id="jsonTextArea" class="code-textarea" rows="12" spellcheck="false" placeholder="Paste circuit JSON here..."></textarea>
+        <div class="file-drop-zone" id="fileDropZone">
+          <i data-lucide="file-up" class="icon-md"></i>
+          <span>Or drop a <code>.json</code> file here to import</span>
+          <input type="file" id="jsonFileInput" accept=".json" style="display:none;">
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="copyJsonBtn" class="btn btn-secondary">
+          <i data-lucide="copy" class="icon-xs"></i> Copy to Clipboard
+        </button>
+        <button id="downloadJsonFileBtn" class="btn btn-secondary">
+          <i data-lucide="download" class="icon-xs"></i> Download .json
+        </button>
+        <button id="applyJsonBtn" class="btn btn-primary">
+          <i data-lucide="check" class="icon-xs"></i> Load into Canvas
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Help & Guide -->
+  <div class="modal-overlay hidden" id="helpModal">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i data-lucide="book-open" class="icon-md text-cyan"></i>
+          <div>
+            <h3>LogicFlow Simulator: Quick Reference & Guide</h3>
+            <span class="modal-subtitle">Swayambhu 2K26 Hackathon Demo Cheatsheet</span>
+          </div>
+        </div>
+        <button class="btn-close" id="closeHelpModalBtn">
+          <i data-lucide="x" class="icon-sm"></i>
+        </button>
+      </div>
+
+      <div class="modal-body help-content">
+        <h4>⚡ Core Controls & Features</h4>
+        <div class="help-grid">
+          <div class="help-box">
+            <strong>Wiring:</strong>
+            <p>Click & drag from any <em>Output pin</em> (circle on the right) and connect to an <em>Input pin</em> (left). One output can drive multiple inputs; an input accepts one wire.</p>
+          </div>
+          <div class="help-box">
+            <strong>Toggling Inputs:</strong>
+            <p>Click directly on any <strong>Switch</strong> on the canvas to toggle between <code>0</code> (Low) and <code>1</code> (High). Signals propagate instantly!</p>
+          </div>
+          <div class="help-box">
+            <strong>Accessibility Design:</strong>
+            <p>High (1) is represented by <strong>thick glowing lines with animated electron particles</strong>, filled glowing bulbs, and <code>[1]</code> tags. Low (0) is thin, dimmed, and hollow <code>[0]</code>.</p>
+          </div>
+          <div class="help-box">
+            <strong>Wire Clean-up:</strong>
+            <p>Select any gate and press <kbd>Del</kbd> or click the trash icon. All connected wires are automatically cleaned up with no dangling connections!</p>
+          </div>
+        </div>
+
+        <h4>⌨️ Keyboard Shortcuts</h4>
+        <table class="shortcuts-table">
+          <tr><td><kbd>Del</kbd> or <kbd>Backspace</kbd></td><td>Delete selected component or wire</td></tr>
+          <tr><td><kbd>Ctrl</kbd> + <kbd>Z</kbd></td><td>Undo previous action</td></tr>
+          <tr><td><kbd>Ctrl</kbd> + <kbd>Y</kbd></td><td>Redo action</td></tr>
+          <tr><td><kbd>Space</kbd> + Drag</td><td>Pan canvas navigation</td></tr>
+          <tr><td><kbd>Mouse Wheel</kbd></td><td>Zoom in / Zoom out smoothly</td></tr>
+          <tr><td><kbd>Esc</kbd></td><td>Cancel wire drawing / Deselect</td></tr>
+        </table>
+
+        <h4>🏆 Preloaded Circuit Demos</h4>
+        <ul class="help-list">
+          <li><strong>Half Adder (Must-Have):</strong> 2 Inputs (A, B) wired into XOR for Sum and AND for Carry.</li>
+          <li><strong>Full Adder:</strong> 3 Inputs (A, B, Cin) driving dual half-adders with OR gate for Cout.</li>
+          <li><strong>XOR from 4 NANDs:</strong> Demonstrates the universal logic equivalence test required by judges.</li>
+          <li><strong>SR Latch Memory:</strong> Cross-coupled NOR gates showing digital memory latching.</li>
+          <li><strong>Feedback Loop Warning:</strong> Inverter cycle detection with instant safety alert.</li>
+        </ul>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-primary" id="doneHelpBtn">Got it!</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden file input for import -->
+  <input type="file" id="importFileInput" accept=".json" style="display:none">
+
+  <!-- Script Modules with Cache Busters -->
+  <script src="src/presets.js?v=5.0"></script>
+  <script src="src/circuit.js?v=5.0"></script>
+  <script src="src/renderer.js?v=5.0"></script>
+  <script src="src/truthTable.js?v=5.0"></script>
+  <script src="src/aiCopilot.js?v=5.0"></script>
+  <script src="src/app.js?v=5.0"></script>
+</body>
+</html>
